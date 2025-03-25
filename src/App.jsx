@@ -10,9 +10,15 @@ function App() {
   const [processing, setProcessing] = useState(false);
   const [csvContent, setCsvContent] = useState(null);
   const [imageUrls, setImageUrls] = useState([]);
-  const [basePath, setBasePath] = useState('/Users/tobiasczudej/Library/CloudStorage/GoogleDrive-tobias@czudejmcdonough.com/Shared drives/Czudej McDonough/01 Appraisals/02 In Progress/NY/KOZL202401');
+  const [basePath, setBasePath] = useState('');
+  const [projectCode, setProjectCode] = useState('');
 
   const processCSV = async (file) => {
+    if (!basePath) {
+      setError('Please enter the Google Drive file path before processing.');
+      return;
+    }
+    
     console.log('Starting to process file:', file.name);
     setProcessing(true);
     setError('');
@@ -30,7 +36,17 @@ function App() {
       const parseResult = Papa.parse(text, {
         header: true,
         skipEmptyLines: 'greedy',
-        transformHeader: header => header.trim()
+        transformHeader: header => header.trim(),
+        transform: value => {
+          // Replace carriage returns and line breaks with spaces
+          if (typeof value === 'string') {
+            // Remove hidden carriage returns and line breaks, replace with space
+            value = value.replace(/[\r\n]+/g, ' ');
+            // Trim extra spaces
+            value = value.trim();
+          }
+          return value;
+        }
       });
 
       setStatus('Processing rows...');
@@ -49,10 +65,10 @@ function App() {
             
           const cleanArtist = (row['Artist  / Object'] || '').replace(/[^a-zA-Z0-9]/g, '-');
           const cleanTitle = (row.Title || '').replace(/[^a-zA-Z0-9]/g, '-');
-          const projectFolder = row.Project || 'UNKNOWN_PROJECT';
+          const projectFolder = row.Project || projectCode || 'UNKNOWN_PROJECT';
           
           // Create full Google Drive path for the image
-          const fullPath = `${basePath}/artwork-images/${cleanArtist}_${cleanTitle}.jpg`;
+          const fullPath = `${basePath}/thumbs/${cleanArtist}_${cleanTitle}.jpg`;
             
           return {
             'Artist': row['Artist  / Object']?.trim(),
@@ -97,8 +113,22 @@ function App() {
       // Generate CSV with the correct Google Drive filepaths
       const indesignCSV = Papa.unparse(validData.map(row => {
         const { _originalImageUrl, _filename, _projectFolder, _fullPath, ...cleanRow } = row;
+        
+        // Extra cleaning for all string values
+        Object.keys(cleanRow).forEach(key => {
+          if (typeof cleanRow[key] === 'string') {
+            // Remove any remaining carriage returns and line breaks
+            cleanRow[key] = cleanRow[key].replace(/[\r\n]+/g, ' ');
+            // Remove extra spaces
+            cleanRow[key] = cleanRow[key].replace(/\s+/g, ' ').trim();
+          }
+        });
+        
         return cleanRow;
-      }));
+      }), {
+        // Ensure UTF-8 encoding by specifying BOM: false
+        BOM: false
+      });
       
       setCsvContent(indesignCSV);
       setImageUrls(validData.map(row => ({
@@ -145,7 +175,7 @@ function App() {
     const zip = new JSZip();
 
     // Process the images
-    const mainFolder = zip.folder('artwork-images');
+    const mainFolder = zip.folder('thumbs');
     
     for (const [index, image] of imageUrls.entries()) {
       try {
@@ -166,7 +196,7 @@ function App() {
     const url = URL.createObjectURL(zipBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'artwork-images.zip';
+    a.download = 'thumbs.zip';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -175,14 +205,40 @@ function App() {
     setStatus(`Downloads complete! Successfully downloaded ${successCount} images. ${failCount ? `Failed to download ${failCount} images.` : ''}\n\nIMPORTANT: Extract the zip file to: ${basePath}`);
   };
 
+  // Optional helper to generate example path from project code
+  const getExamplePath = () => {
+    if (!projectCode) return "/Users/username/Google Drive/Shared drives/YourCompany/Projects/PROJECT_CODE";
+    
+    return `/Users/username/Google Drive/Shared drives/YourCompany/Projects/${projectCode}`;
+  };
+
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <h3 style={{ marginBottom: '10px' }}>Project Code (Optional):</h3>
+        <input 
+          type="text" 
+          value={projectCode}
+          onChange={(e) => setProjectCode(e.target.value)}
+          placeholder="e.g., KOZL202501"
+          style={{
+            width: '100%',
+            padding: '8px',
+            borderRadius: '4px',
+            border: '1px solid #ccc',
+            fontSize: '14px',
+            marginBottom: '10px'
+          }}
+        />
+      </div>
+
       <div style={{ marginBottom: '20px' }}>
         <h3 style={{ marginBottom: '10px' }}>Google Drive Base Path:</h3>
         <input 
           type="text" 
           value={basePath}
           onChange={(e) => setBasePath(e.target.value)}
+          placeholder="Enter the full path to your project folder"
           style={{
             width: '100%',
             padding: '8px',
@@ -192,7 +248,9 @@ function App() {
           }}
         />
         <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          This is where you'll extract the zip file. The CSV will reference images at this location.
+          Enter the full path to your project folder. Example: {getExamplePath()}
+          <br />
+          Images should be stored in a subfolder titled "thumbs" at this location.
         </p>
       </div>
 
