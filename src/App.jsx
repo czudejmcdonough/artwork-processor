@@ -3,6 +3,167 @@ import Papa from 'papaparse';
 import { Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
 
+// Add CSS styles at the top
+const styles = `
+/* Bodoni font import */
+@import url('https://indestructibletype.com/fonts/Bodoni/Bodoni.css');
+
+body {
+  color: #213547;
+  background-color: #F7F6F5;
+  font-family: 'Bodoni 6', serif;
+  margin: 0;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  display: flex;
+  justify-content: center;
+}
+
+h3 {
+  font-family: 'Bodoni 6', serif;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #213547;
+}
+
+input, button {
+  font-family: 'Bodoni 6', serif;
+}
+
+.container {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 32px 20px;
+}
+
+.input-group {
+  margin-bottom: 24px;
+  width: 100%;
+}
+
+.input-field {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 6px;
+  border: 1px solid #D1D5DB;
+  font-size: 14px;
+  background-color: white;
+  transition: border-color 0.2s;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.input-help {
+  font-size: 13px;
+  color: #6B7280;
+  margin-top: 6px;
+}
+
+.drop-zone {
+  border: 2px dashed #D1D5DB;
+  padding: 32px 20px;
+  border-radius: 8px;
+  text-align: center;
+  margin-bottom: 24px;
+  transition: all 0.2s;
+  background-color: white;
+}
+
+.drop-zone:hover {
+  border-color: #3b82f6;
+  background-color: #F8FAFC;
+}
+
+.icon-container {
+  margin: 0 auto;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.message-box {
+  padding: 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+}
+
+.error-box {
+  background-color: #FEF2F2;
+  border: 1px solid #EF4444;
+}
+
+.status-box {
+  background-color: #F3F4F6;
+  border: 1px solid #D1D5DB;
+}
+
+.message-title {
+  margin: 0 0 8px 0;
+  font-weight: 500;
+}
+
+.message-content {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.error-title {
+  color: #DC2626;
+}
+
+.button {
+  width: 100%;
+  padding: 12px;
+  border-radius: 6px;
+  border: none;
+  color: white;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background-color 0.2s;
+}
+
+.button-primary {
+  background-color: #3b82f6;
+}
+
+.button-primary:hover {
+  background-color: #2563EB;
+}
+
+.button-success {
+  background-color: #10b981;
+}
+
+.button-success:hover {
+  background-color: #059669;
+}
+
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-list {
+  margin: 0;
+  padding-left: 24px;
+}
+
+.stats-list li {
+  margin-bottom: 4px;
+}
+`;
+
 function App() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
@@ -213,161 +374,108 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '20px' }}>
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ marginBottom: '10px' }}>Project Code (Optional):</h3>
-        <input 
-          type="text" 
-          value={projectCode}
-          onChange={(e) => setProjectCode(e.target.value)}
-          placeholder="e.g., KOZL202501"
-          style={{
-            width: '100%',
-            padding: '8px',
-            borderRadius: '4px',
-            border: '1px solid #ccc',
-            fontSize: '14px',
-            marginBottom: '10px'
-          }}
-        />
-      </div>
+    <>
+      <style>{styles}</style>
+      <link rel="stylesheet" href="https://indestructibletype.com/fonts/Bodoni/Bodoni.css" type="text/css" charSet="utf-8" />
+      <div className="container">
+        <div className="input-group">
+          <h3>Project Code (Optional):</h3>
+          <input 
+            type="text" 
+            className="input-field"
+            value={projectCode}
+            onChange={(e) => setProjectCode(e.target.value)}
+            placeholder="e.g., KOZL202501"
+          />
+        </div>
 
-      <div style={{ marginBottom: '20px' }}>
-        <h3 style={{ marginBottom: '10px' }}>Google Drive Base Path:</h3>
-        <input 
-          type="text" 
-          value={basePath}
-          onChange={(e) => setBasePath(e.target.value)}
-          placeholder="Enter the full path to your project folder"
-          style={{
-            width: '100%',
-            padding: '8px',
-            borderRadius: '4px',
-            border: '1px solid #ccc',
-            fontSize: '14px'
-          }}
-        />
-        <p style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
-          Enter the full path to your project folder. Example: {getExamplePath()}
-          <br />
-          Images should be stored in a subfolder titled "thumbs" at this location.
-        </p>
-      </div>
-
-      <div style={{ 
-        border: '2px dashed #ccc', 
-        padding: '20px',
-        borderRadius: '8px',
-        textAlign: 'center',
-        marginBottom: '20px'
-      }}>
-        <input
-          type="file"
-          accept=".csv"
-          onChange={(e) => {
-            console.log('File selected:', e.target.files?.[0]);
-            e.target.files?.[0] && processCSV(e.target.files[0]);
-          }}
-          style={{ display: 'none' }}
-          id="csv-upload"
-        />
-        <label htmlFor="csv-upload" style={{ cursor: 'pointer' }}>
-          <Upload style={{ margin: '0 auto', width: '48px', height: '48px', color: '#666' }} />
-          <p style={{ marginTop: '10px', color: '#666' }}>
-            Click to upload your Airtable CSV file
+        <div className="input-group">
+          <h3>Google Drive Base Path:</h3>
+          <input 
+            type="text" 
+            className="input-field"
+            value={basePath}
+            onChange={(e) => setBasePath(e.target.value)}
+            placeholder="Enter the full path to your project folder"
+          />
+          <p className="input-help">
+            Enter the full path to your project folder. Example: {getExamplePath()}
+            <br />
+            Images will be stored in a "thumbs" subfolder at this location.
           </p>
-          <p style={{ fontSize: '14px', color: '#999' }}>
-            {processing ? 'Processing...' : 'Choose a file to begin'}
-          </p>
-        </label>
+        </div>
+
+        <div className="drop-zone">
+          <input
+            type="file"
+            accept=".csv"
+            onChange={(e) => {
+              console.log('File selected:', e.target.files?.[0]);
+              e.target.files?.[0] && processCSV(e.target.files[0]);
+            }}
+            style={{ display: 'none' }}
+            id="csv-upload"
+          />
+          <label htmlFor="csv-upload" style={{ cursor: 'pointer' }}>
+            <div className="icon-container">
+              <Upload size={36} color="#6B7280" />
+            </div>
+            <p style={{ marginTop: '10px', color: '#213547', fontWeight: 500 }}>
+              Click to upload your Airtable CSV file
+            </p>
+            <p style={{ fontSize: '14px', color: '#6B7280' }}>
+              {processing ? 'Processing...' : 'Choose a file to begin'}
+            </p>
+          </label>
+        </div>
+
+        {error && (
+          <div className="message-box error-box">
+            <h4 className="message-title error-title">Error</h4>
+            <p className="message-content" style={{ color: '#DC2626' }}>{error}</p>
+          </div>
+        )}
+
+        {status && (
+          <div className="message-box status-box">
+            <h4 className="message-title">Status</h4>
+            <p className="message-content">{status}</p>
+          </div>
+        )}
+
+        {stats && (
+          <div className="message-box status-box">
+            <h4 className="message-title">Processing Complete</h4>
+            <ul className="stats-list">
+              <li>Total rows processed: {stats.totalRows}</li>
+              <li>Valid entries found: {stats.validRows}</li>
+              <li>Images found: {stats.imagesFound}</li>
+              <li>Projects: {stats.projects.join(', ')}</li>
+            </ul>
+          </div>
+        )}
+
+        {csvContent && (
+          <div className="button-group">
+            <button
+              onClick={downloadCSV}
+              className="button button-primary"
+            >
+              <Download size={20} />
+              Download InDesign CSV
+            </button>
+            
+            <button
+              onClick={downloadImages}
+              className="button button-success"
+            >
+              <Download size={20} />
+              Download All Images ({stats?.imagesFound} files)
+            </button>
+          </div>
+        )}
       </div>
-
-      {error && (
-        <div style={{ 
-          backgroundColor: '#fee2e2', 
-          border: '1px solid #ef4444',
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '10px'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0', color: '#dc2626' }}>Error</h4>
-          <p style={{ margin: 0, color: '#dc2626' }}>{error}</p>
-        </div>
-      )}
-
-      {status && (
-        <div style={{ 
-          backgroundColor: '#f3f4f6', 
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '10px'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0' }}>Status</h4>
-          <p style={{ margin: 0, whiteSpace: 'pre-line' }}>{status}</p>
-        </div>
-      )}
-
-      {stats && (
-        <div style={{ 
-          backgroundColor: '#f3f4f6', 
-          padding: '10px',
-          borderRadius: '4px',
-          marginBottom: '10px'
-        }}>
-          <h4 style={{ margin: '0 0 5px 0' }}>Processing Complete</h4>
-          <ul style={{ margin: '0', paddingLeft: '20px' }}>
-            <li>Total rows processed: {stats.totalRows}</li>
-            <li>Valid entries found: {stats.validRows}</li>
-            <li>Images found: {stats.imagesFound}</li>
-            <li>Projects: {stats.projects.join(', ')}</li>
-          </ul>
-        </div>
-      )}
-
-      {csvContent && (
-        <div style={{ display: 'flex', gap: '10px', flexDirection: 'column' }}>
-          <button
-            onClick={downloadCSV}
-            style={{
-              width: '100%',
-              padding: '10px',
-              backgroundColor: '#3b82f6',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            <Download size={20} />
-            Download InDesign CSV
-          </button>
-          
-          <button
-            onClick={downloadImages}
-            style={{
-              width: '100%',
-              padding: '10px',
-              backgroundColor: '#10b981',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '8px'
-            }}
-          >
-            <Download size={20} />
-            Download All Images ({stats?.imagesFound} files)
-          </button>
-        </div>
-      )}
-    </div>
+    </>
   );
 }
 
