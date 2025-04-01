@@ -3,7 +3,7 @@ import Papa from 'papaparse';
 import { Upload, Download } from 'lucide-react';
 import JSZip from 'jszip';
 
-// Add CSS styles at the top
+// Add CSS styles at the top (unchanged)
 const styles = `
 /* Bodoni font import */
 @import url('https://indestructibletype.com/fonts/Bodoni/Bodoni.css');
@@ -215,6 +215,46 @@ function App() {
   const [basePath, setBasePath] = useState('');
   const [projectCode, setProjectCode] = useState('');
 
+  // Function to properly handle special characters in filenames
+  const cleanFilename = (text) => {
+    if (!text) return '';
+    
+    // First normalize the text to decompose accented characters
+    // and replace diacritics with their base characters
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '') // Remove diacritics but keep base characters
+      .replace(/[^a-zA-Z0-9]/g, '-')   // Replace other non-alphanumeric with hyphens
+      .replace(/-+/g, '-')             // Replace multiple hyphens with single hyphen
+      .replace(/^-|-$/g, '');          // Remove leading and trailing hyphens
+  };
+
+  // Extract image URLs from Airtable format
+  const extractImageUrls = (imageField) => {
+    if (!imageField || typeof imageField !== 'string') return [];
+    
+    // Match all URLs in the format (https://...)
+    const urlMatches = imageField.match(/\(https:\/\/[^)]+\)/g) || [];
+    
+    // Extract URLs from matches by removing parentheses
+    return urlMatches.map(match => match.slice(1, -1));
+  };
+
+  // Preprocess CSV text to handle complex quotes better
+  const preprocessCsvText = (text) => {
+    // Handle the specific problematic row with the marble torso
+    let processedText = text;
+    
+    // Find and fix problematic quotes in title fields
+    const marbleRegex = /(".*?One Marble Torso Of An Athlete, Hero or God\. Roman, Ca\..*?")/g;
+    processedText = processedText.replace(marbleRegex, (match) => {
+      // Clean up nested quotes by replacing them with single quotes
+      return match.replace(/""([^"]*)""/, "'$1'");
+    });
+    
+    return processedText;
+  };
+
   const processCSV = async (file) => {
     if (!basePath) {
       setError('Please enter the Google Drive file path before processing.');
@@ -233,9 +273,12 @@ function App() {
         reader.readAsText(file);
       });
 
+      // Preprocess the text to handle special cases
+      const processedText = preprocessCsvText(text);
+      
       setStatus('Parsing CSV...');
 
-      const parseResult = Papa.parse(text, {
+      const parseResult = Papa.parse(processedText, {
         header: true,
         skipEmptyLines: 'greedy',
         transformHeader: header => header.trim(),
@@ -253,67 +296,74 @@ function App() {
 
       setStatus('Processing rows...');
       
-      // Debug: Log the headers we found
+      // Debug: Log the headers found
       console.log('CSV Headers found:', parseResult.meta.fields);
-      // Debug: Log the first row of data
-      console.log('First row of data:', parseResult.data[0]);
+      
+      // Look for special cases
+      const marbleRow = parseResult.data.find(row => 
+        (row['Title (from Artwork)'] || '').includes('Marble Torso') ||
+        (row['Name'] || '').includes('Marble Torso')
+      );
+      
+      if (marbleRow) {
+        console.log('Found row with Marble Torso:', marbleRow);
+      }
 
       const processedData = parseResult.data.map((row, index) => {
-        // Safely access and process the image URL
-        let imageUrl = '';
-        try {
-          if (row['Images (from Artwork)']) {
-            const match = row['Images (from Artwork)'].match(/\(https:\/\/.*?\)/);
-            if (match) {
-              imageUrl = match[0].slice(1, -1);
-            }
-          }
-        } catch (err) {
-          console.error(`Error processing image URL for row ${index}:`, err);
-        }
+        // Special handling for the problematic row
+        let title = row['Title (from Artwork)'] || row['Name'] || '';
         
-        // Clean artist and title for filename, but preserve accented characters
-        const cleanArtist = (row['Artist (from Artwork)'] || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics but keep base characters
-          .replace(/[^a-zA-Z0-9]/g, '-');  // Replace other non-alphanumeric with hyphens
-        const cleanTitle = (row['Title (from Artwork)'] || '')
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics but keep base characters
-          .replace(/[^a-zA-Z0-9]/g, '-');  // Replace other non-alphanumeric with hyphens
-        const projectFolder = row['Project ID #'] || projectCode || 'UNKNOWN_PROJECT';
+        // Special case for the Marble Torso
+        if (title.includes('Marble Torso') && title.includes('Roman')) {
+          console.log('Processing special case for Marble Torso');
+          // Remove excessive quotes and normalize
+          title = title.replace(/^"+|"+$/g, '').replace(/"{2,}/g, '"');
+          console.log('Cleaned title:', title);
+        }
+
+        // Handle multiple image URLs
+        const imageField = row['Images (from Artwork)'] || row['Attachments'] || '';
+        const imageUrls = extractImageUrls(imageField);
+        const primaryImageUrl = imageUrls.length > 0 ? imageUrls[0] : '';
+        
+        // Clean artist and title for filename using our improved function
+        const artist = row['Artist (from Artwork)'] || '';
+        const cleanArtist = cleanFilename(artist);
+        const cleanTitle = cleanFilename(title);
+        
+        // Get project folder - check multiple possible field names
+        const projectFolder = row['Project ID #'] || row['Project Code'] || projectCode || 'UNKNOWN_PROJECT';
         
         // Create full Google Drive path for the image
-        const fullPath = `${basePath}/thumbs/${cleanArtist}_${cleanTitle}.jpg`;
+        const fullPath = `${basePath}/${projectFolder}/thumbs/${cleanArtist}_${cleanTitle}.jpg`;
           
         return {
-          'Artist': row['Artist (from Artwork)']?.trim(),
-          'Title': row['Title (from Artwork)']?.trim(),
-          'Date': row['Date (from Artwork)']?.trim(),
-          'Medium': row['Medium (from Artwork)']?.trim(),
-          'Dimensions': row['Dimensions (from Artwork)']?.trim(),
-          'Location': row['Location']?.trim(),
-          'Edition': row['Edition (from Artwork)']?.toString(),
-          'Alt Dimensions 1 (h x w)': row['Height In. (from Artwork)'] && row['Width In. (from Artwork)'] ? 
-            `${row['Height In. (from Artwork)']} x ${row['Width In. (from Artwork)']}` : '',
-          'Alt Dimensions 2 (h x w)': row['Depth In. (from Artwork)'] ? 
-            `${row['Depth In. (from Artwork)']}` : '',
-          'Signature / Inscriptions / Labels': row['Signature & Inscription (from Artwork)']?.trim(),
-          'Provenance': row['Provenance (from Artwork)']?.toString().trim(),
-          'Exhibitions': row['Exhibitions (from Artwork)']?.trim(),
-          'Publications': row['Publications (from Artwork)']?.toString().trim(),
-          'Condition': row['Condition (from Artwork)']?.toString().trim(),
-          'Artwork Cataloguing': row['Object ID#']?.trim(),
+          'Artist': artist.trim(),
+          'Title': title.trim(),
+          'Date': (row['Date (from Artwork)'] || row['Date'] || '').trim(),
+          'Medium': (row['Medium (from Artwork)'] || row['Medium'] || '').trim(),
+          'Dimensions': (row['Dimensions (from Artwork)'] || row['Dimensions'] || '').trim(),
+          'Location': (row['Location'] || '').trim(),
+          'Edition': (row['Edition (from Artwork)'] || row['Edition'] || '').toString(),
+          'Alt Dimensions 1 (h x w)': (row['Alt Dimensions 1 (h x w) (from Artwork)'] || '').trim(),
+          'Alt Dimensions 2 (h x w)': (row['Alt Dimensions 2 (h x w) (from Artwork)'] || '').trim(),
+          'Signature / Inscriptions / Labels': (row['Signature & Inscription (from Artwork)'] || '').trim(),
+          'Provenance': (row['Provenance (from Artwork)'] || row['Provenance'] || '').toString().trim(),
+          'Exhibitions': (row['Exhibitions (from Artwork)'] || row['Exhibitions'] || '').trim(),
+          'Publications': (row['Publications (from Artwork)'] || row['Publications'] || '').toString().trim(),
+          'Condition': (row['Condition'] || '').toString().trim(),
+          'Artwork Cataloguing': (row['Object ID#'] || row['ID'] || '').trim(),
           '@imageFilePath': fullPath,
-          '_originalImageUrl': imageUrl,
+          '_originalImageUrl': primaryImageUrl,
           '_filename': `${cleanArtist}_${cleanTitle}.jpg`,
           '_projectFolder': projectFolder,
-          '_fullPath': fullPath
+          '_fullPath': fullPath,
+          '_allImageUrls': imageUrls
         };
       });
 
       const validData = processedData.filter(row => {
-        const isValid = row.Artist && row.Title;
+        const isValid = row.Artist || row.Title; // Make this logic more flexible
         if (!isValid) {
           console.log('Invalid row found:', row);
         }
@@ -327,38 +377,55 @@ function App() {
 
       // Generate CSV with the correct Google Drive filepaths
       const indesignCSV = Papa.unparse(validData.map(row => {
-        const { _originalImageUrl, _filename, _projectFolder, _fullPath, ...cleanRow } = row;
+        const { _originalImageUrl, _filename, _projectFolder, _fullPath, _allImageUrls, ...cleanRow } = row;
         
-        // Extra cleaning for all string values but preserve special characters
+        // Extra cleaning for all string values
         Object.keys(cleanRow).forEach(key => {
           if (typeof cleanRow[key] === 'string') {
             // Remove any remaining carriage returns and line breaks
             cleanRow[key] = cleanRow[key].replace(/[\r\n]+/g, ' ');
             // Remove extra spaces
             cleanRow[key] = cleanRow[key].replace(/\s+/g, ' ').trim();
-            // Ensure proper encoding of special characters
-            cleanRow[key] = cleanRow[key]
-              .normalize('NFC'); // Normalize to composed form for consistent display
           }
         });
         
         return cleanRow;
       }), {
-        // Ensure UTF-8 encoding by specifying BOM: false
+        quotes: true,    // Quote all fields
+        escapeChar: '"', // Use double quotes to escape quotes
         BOM: false
       });
       
       setCsvContent(indesignCSV);
-      setImageUrls(validData.map(row => ({
-        url: row._originalImageUrl,
-        filename: row._filename,
-        projectFolder: row._projectFolder
-      })).filter(item => item.url));
+      
+      // Collect all image URLs for downloading
+      const allImages = [];
+      validData.forEach(row => {
+        if (row._allImageUrls && row._allImageUrls.length > 0) {
+          row._allImageUrls.forEach((url, i) => {
+            // For multiple images from the same artwork, add index to filename
+            const suffix = i > 0 ? `_${i+1}` : '';
+            allImages.push({
+              url: url,
+              filename: `${row._filename.replace('.jpg', '')}${suffix}.jpg`,
+              projectFolder: row._projectFolder
+            });
+          });
+        } else if (row._originalImageUrl) {
+          allImages.push({
+            url: row._originalImageUrl,
+            filename: row._filename,
+            projectFolder: row._projectFolder
+          });
+        }
+      });
+      
+      setImageUrls(allImages.filter(item => item.url));
 
       setStats({
         totalRows: parseResult.data.length,
         validRows: validData.length,
-        imagesFound: validData.filter(row => row._originalImageUrl).length,
+        imagesFound: allImages.filter(item => item.url).length,
         projects: [...new Set(validData.map(row => row._projectFolder))]
       });
 
@@ -395,12 +462,19 @@ function App() {
     // Process the images
     const mainFolder = zip.folder('thumbs');
     
+    // Log the number of images to download
+    console.log(`Downloading ${imageUrls.length} images`);
+    
     for (const [index, image] of imageUrls.entries()) {
       try {
         setStatus(`Downloading image ${index + 1} of ${imageUrls.length}...`);
+        console.log(`Downloading image ${index + 1}: ${image.url}`);
+        
         const response = await fetch(image.url);
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const blob = await response.blob();
+        
+        console.log(`Successfully downloaded ${image.filename}`);
         mainFolder.file(image.filename, blob);
         successCount++;
       } catch (error) {
