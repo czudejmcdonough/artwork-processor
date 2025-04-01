@@ -11,7 +11,7 @@ const styles = `
 body {
   color: #213547;
   background-color: #F7F6F5;
-  font-family: 'Bodoni 6', serif;
+  font-family: 'Bodoni 6', 'Bodoni MT', 'Bodoni', 'Didot', 'Times New Roman', serif;
   margin: 0;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -21,20 +21,42 @@ body {
 }
 
 h3 {
-  font-family: 'Bodoni 6', serif;
+  font-family: 'Bodoni 6', 'Bodoni MT', 'Bodoni', 'Didot', 'Times New Roman', serif;
   font-weight: 500;
   margin-bottom: 12px;
-  color: #213547;
+  color: #2E2E2E;
+  font-size: 18px;
+  border-bottom: 0.25px solid #2E2E2E;
+  padding-bottom: 10px;
 }
 
 input, button {
-  font-family: 'Bodoni 6', serif;
+  font-family: 'Bodoni 6', 'Bodoni MT', 'Bodoni', 'Didot', 'Times New Roman', serif;
 }
 
 .container {
   max-width: 600px;
   margin: 0 auto;
   padding: 32px 20px;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.header img {
+  max-width: 300px;
+  margin-bottom: 20px;
+}
+
+.header-subtitle {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #666666;
+  border-top: 0.25px solid #2E2E2E;
+  padding-top: 10px;
 }
 
 .input-group {
@@ -47,9 +69,10 @@ input, button {
   padding: 10px 12px;
   border-radius: 6px;
   border: 1px solid #D1D5DB;
-  font-size: 14px;
+  font-size: 16px;
   background-color: white;
   transition: border-color 0.2s;
+  font-family: 'Bodoni 6', 'Bodoni MT', 'Bodoni', 'Didot', 'Times New Roman', serif;
 }
 
 .input-field:focus {
@@ -58,9 +81,10 @@ input, button {
 }
 
 .input-help {
-  font-size: 13px;
-  color: #6B7280;
+  font-size: 14px;
+  color: #666666;
   margin-top: 6px;
+  line-height: 1.6;
 }
 
 .drop-zone {
@@ -74,7 +98,7 @@ input, button {
 }
 
 .drop-zone:hover {
-  border-color: #3b82f6;
+  border-color: #2E2E2E;
   background-color: #F8FAFC;
 }
 
@@ -88,9 +112,11 @@ input, button {
 }
 
 .message-box {
-  padding: 16px;
+  padding: 20px;
   border-radius: 6px;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  font-size: 16px;
+  line-height: 1.6;
 }
 
 .error-box {
@@ -99,18 +125,20 @@ input, button {
 }
 
 .status-box {
-  background-color: #F3F4F6;
+  background-color: #f0efee;
   border: 1px solid #D1D5DB;
 }
 
 .message-title {
-  margin: 0 0 8px 0;
+  margin: 0 0 10px 0;
   font-weight: 500;
+  font-size: 16px;
 }
 
 .message-content {
   margin: 0;
   white-space: pre-line;
+  color: #333333;
 }
 
 .error-title {
@@ -130,22 +158,25 @@ input, button {
   justify-content: center;
   gap: 8px;
   transition: background-color 0.2s;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .button-primary {
-  background-color: #3b82f6;
+  background-color: #2E2E2E;
 }
 
 .button-primary:hover {
-  background-color: #2563EB;
+  background-color: #444444;
 }
 
 .button-success {
-  background-color: #10b981;
+  background-color: #2E2E2E;
 }
 
 .button-success:hover {
-  background-color: #059669;
+  background-color: #444444;
 }
 
 .button-group {
@@ -157,10 +188,20 @@ input, button {
 .stats-list {
   margin: 0;
   padding-left: 24px;
+  color: #333333;
 }
 
 .stats-list li {
-  margin-bottom: 4px;
+  margin-bottom: 8px;
+}
+
+.footer {
+  margin-top: 40px;
+  border-top: 0.25px solid #dddddd;
+  padding-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  color: #999999;
 }
 `;
 
@@ -218,45 +259,58 @@ function App() {
       console.log('First row of data:', parseResult.data[0]);
 
       const processedData = parseResult.data.map((row, index) => {
+        // Safely access and process the image URL
+        let imageUrl = '';
         try {
-          const imageUrlMatch = row.Images ? 
-            row.Images.match(/\(https:\/\/.*?\)/) : null;
-          const imageUrl = imageUrlMatch ? 
-            imageUrlMatch[0].slice(1, -1) : '';
-            
-          const cleanArtist = (row['Artist  / Object'] || '').replace(/[^a-zA-Z0-9]/g, '-');
-          const cleanTitle = (row.Title || '').replace(/[^a-zA-Z0-9]/g, '-');
-          const projectFolder = row.Project || projectCode || 'UNKNOWN_PROJECT';
-          
-          // Create full Google Drive path for the image
-          const fullPath = `${basePath}/thumbs/${cleanArtist}_${cleanTitle}.jpg`;
-            
-          return {
-            'Artist': row['Artist  / Object']?.trim(),
-            'Title': row.Title?.trim(),
-            'Date': row.Date?.trim(),
-            'Medium': row.Medium?.trim(),
-            'Dimensions': row.Dimensions?.trim(),
-            'Edition': row.Edition?.toString(),
-            'Alt Dimensions 1 (h x w)': row['Alt Dimensions 1 (h x w)']?.toString().trim(),
-            'Alt Dimensions 2 (h x w)': row['Alt Dimensions 2 (h x w)']?.toString().trim(),
-            'Signature / Inscriptions / Labels': row['Signature / Inscriptions / Labels']?.trim(),
-            'Provenance': row.Provenance?.toString().trim(),
-            'Exhibitions': row.Exhibitions?.trim(),
-            'Publications': row.Publications?.toString().trim(),
-            'Condition': row.Condition?.toString().trim(),
-            'Artwork Cataloguing': row['Artwork Cataloguing']?.trim(),
-            '@imageFilePath': fullPath,  // Column header starts with @ but path doesn't
-            '_originalImageUrl': imageUrl,
-            '_filename': `${cleanArtist}_${cleanTitle}.jpg`,
-            '_projectFolder': projectFolder,
-            '_fullPath': fullPath  // Store the full path for reference
-          };
+          if (row['Images (from Artwork)']) {
+            const match = row['Images (from Artwork)'].match(/\(https:\/\/.*?\)/);
+            if (match) {
+              imageUrl = match[0].slice(1, -1);
+            }
+          }
         } catch (err) {
-          console.error(`Error processing row ${index}:`, err);
-          return null;
+          console.error(`Error processing image URL for row ${index}:`, err);
         }
-      }).filter(row => row !== null);
+        
+        // Clean artist and title for filename, but preserve accented characters
+        const cleanArtist = (row['Artist (from Artwork)'] || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics but keep base characters
+          .replace(/[^a-zA-Z0-9]/g, '-');  // Replace other non-alphanumeric with hyphens
+        const cleanTitle = (row['Title (from Artwork)'] || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics but keep base characters
+          .replace(/[^a-zA-Z0-9]/g, '-');  // Replace other non-alphanumeric with hyphens
+        const projectFolder = row['Project ID #'] || projectCode || 'UNKNOWN_PROJECT';
+        
+        // Create full Google Drive path for the image
+        const fullPath = `${basePath}/thumbs/${cleanArtist}_${cleanTitle}.jpg`;
+          
+        return {
+          'Artist': row['Artist (from Artwork)']?.trim(),
+          'Title': row['Title (from Artwork)']?.trim(),
+          'Date': row['Date (from Artwork)']?.trim(),
+          'Medium': row['Medium (from Artwork)']?.trim(),
+          'Dimensions': row['Dimensions (from Artwork)']?.trim(),
+          'Location': row['Location']?.trim(),
+          'Edition': row['Edition (from Artwork)']?.toString(),
+          'Alt Dimensions 1 (h x w)': row['Height In. (from Artwork)'] && row['Width In. (from Artwork)'] ? 
+            `${row['Height In. (from Artwork)']} x ${row['Width In. (from Artwork)']}` : '',
+          'Alt Dimensions 2 (h x w)': row['Depth In. (from Artwork)'] ? 
+            `${row['Depth In. (from Artwork)']}` : '',
+          'Signature / Inscriptions / Labels': row['Signature & Inscription (from Artwork)']?.trim(),
+          'Provenance': row['Provenance (from Artwork)']?.toString().trim(),
+          'Exhibitions': row['Exhibitions (from Artwork)']?.trim(),
+          'Publications': row['Publications (from Artwork)']?.toString().trim(),
+          'Condition': row['Condition (from Artwork)']?.toString().trim(),
+          'Artwork Cataloguing': row['Object ID#']?.trim(),
+          '@imageFilePath': fullPath,
+          '_originalImageUrl': imageUrl,
+          '_filename': `${cleanArtist}_${cleanTitle}.jpg`,
+          '_projectFolder': projectFolder,
+          '_fullPath': fullPath
+        };
+      });
 
       const validData = processedData.filter(row => {
         const isValid = row.Artist && row.Title;
@@ -275,13 +329,16 @@ function App() {
       const indesignCSV = Papa.unparse(validData.map(row => {
         const { _originalImageUrl, _filename, _projectFolder, _fullPath, ...cleanRow } = row;
         
-        // Extra cleaning for all string values
+        // Extra cleaning for all string values but preserve special characters
         Object.keys(cleanRow).forEach(key => {
           if (typeof cleanRow[key] === 'string') {
             // Remove any remaining carriage returns and line breaks
             cleanRow[key] = cleanRow[key].replace(/[\r\n]+/g, ' ');
             // Remove extra spaces
             cleanRow[key] = cleanRow[key].replace(/\s+/g, ' ').trim();
+            // Ensure proper encoding of special characters
+            cleanRow[key] = cleanRow[key]
+              .normalize('NFC'); // Normalize to composed form for consistent display
           }
         });
         
@@ -368,7 +425,7 @@ function App() {
 
   // Optional helper to generate example path from project code
   const getExamplePath = () => {
-    if (!projectCode) return "/Users/username/Google Drive/Shared drives/YourCompany/Projects/PROJECT_CODE";
+    if (!projectCode) return "/Users/tobiasczudej/Library/CloudStorage/GoogleDrive-tobias@czudejmcdonough.com/Shared drives/Czudej McDonough/01 Appraisals/02 In Progress/NY/BLAK202501";
     
     return `/Users/username/Google Drive/Shared drives/YourCompany/Projects/${projectCode}`;
   };
@@ -378,8 +435,15 @@ function App() {
       <style>{styles}</style>
       <link rel="stylesheet" href="https://indestructibletype.com/fonts/Bodoni/Bodoni.css" type="text/css" charSet="utf-8" />
       <div className="container">
+        <div className="header">
+          <img src="https://i.imgur.com/NUSPqvj.png" alt="Czudej McDonough Fine Art Appraisal" />
+          <div className="header-subtitle">
+            AIRTABLE CSV PROCESSOR
+          </div>
+        </div>
+
         <div className="input-group">
-          <h3>Project Code (Optional):</h3>
+          <h3>Project Code</h3>
           <input 
             type="text" 
             className="input-field"
@@ -390,7 +454,7 @@ function App() {
         </div>
 
         <div className="input-group">
-          <h3>Google Drive Base Path:</h3>
+          <h3>Google Drive Base Path</h3>
           <input 
             type="text" 
             className="input-field"
@@ -399,9 +463,9 @@ function App() {
             placeholder="Enter the full path to your project folder"
           />
           <p className="input-help">
-            Enter the full path to your project folder. Example: {getExamplePath()}
+            Enter the full path to your project folder. For example: {getExamplePath()}
             <br />
-            Images will be stored in a "thumbs" subfolder at this location.
+            Download images and place "thumbs" folder at this location.
           </p>
         </div>
 
@@ -418,12 +482,12 @@ function App() {
           />
           <label htmlFor="csv-upload" style={{ cursor: 'pointer' }}>
             <div className="icon-container">
-              <Upload size={36} color="#6B7280" />
+              <Upload size={36} color="#2E2E2E" />
             </div>
-            <p style={{ marginTop: '10px', color: '#213547', fontWeight: 500 }}>
+            <p style={{ marginTop: '10px', color: '#2E2E2E', fontWeight: 500 }}>
               Click to upload your Airtable CSV file
             </p>
-            <p style={{ fontSize: '14px', color: '#6B7280' }}>
+            <p style={{ fontSize: '14px', color: '#666666' }}>
               {processing ? 'Processing...' : 'Choose a file to begin'}
             </p>
           </label>
@@ -462,7 +526,7 @@ function App() {
               className="button button-primary"
             >
               <Download size={20} />
-              Download InDesign CSV
+              DOWNLOAD INDESIGN CSV
             </button>
             
             <button
@@ -470,10 +534,15 @@ function App() {
               className="button button-success"
             >
               <Download size={20} />
-              Download All Images ({stats?.imagesFound} files)
+              DOWNLOAD ALL IMAGES ({stats?.imagesFound} FILES)
             </button>
           </div>
         )}
+        
+        <div className="footer">
+          © {new Date().getFullYear()} Czudej McDonough<br/>
+          Fine Art Appraisal Services
+        </div>
       </div>
     </>
   );
